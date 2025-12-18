@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Game Asmaul Husna</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{margin:0;font-family:Arial;background:#ecfdf5;overflow:hidden;text-align:center}
+.screen{display:none;padding:30px}
+.active{display:block}
+h1,h2{color:#064e3b}
+
+.profile{
+ display:flex;justify-content:center;align-items:center;
+ gap:15px;margin-bottom:15px
+}
+.profile img{
+ width:80px;border-radius:12px;
+ box-shadow:0 0 8px rgba(0,0,0,.2)
+}
+
+button{
+ background:#166534;color:white;border:none;
+ padding:12px 22px;font-size:16px;
+ border-radius:12px;cursor:pointer
+}
+input{
+ padding:10px;font-size:16px;
+ border-radius:8px;border:1px solid #555
+}
+
+#game{
+ max-width:900px;margin:20px auto;
+ display:grid;grid-template-columns:repeat(5,1fr);
+ gap:12px
+}
+
+.card{
+ background:#bbf7d0;border-radius:12px;
+ padding:14px;font-weight:bold;cursor:pointer;
+ transition:.3s;box-shadow:0 0 8px rgba(0,0,0,.15)
+}
+.card.selected{background:#fde68a}
+.card.matched{
+ background:#4ade80;color:#064e3b;
+ animation:glow .8s infinite alternate
+}
+@keyframes glow{
+ from{box-shadow:0 0 5px #22c55e}
+ to{box-shadow:0 0 18px #22c55e}
+}
+
+#notif{font-size:32px;height:40px;margin:10px}
+.benar{color:#15803d}
+.salah{color:#b91c1c}
+
+/* partikel warna */
+.particle{
+ position:fixed;width:14px;height:14px;
+ border-radius:50%;opacity:.8;
+ animation:fall linear infinite
+}
+@keyframes fall{
+ from{top:-20px}
+ to{top:100vh}
+}
+</style>
+</head>
+
+<body>
+
+<script>
+/* partikel latar aman */
+for(let i=0;i<40;i++){
+ let p=document.createElement("div");
+ p.className="particle";
+ p.style.left=Math.random()*100+"vw";
+ p.style.background=`hsl(${Math.random()*360},100%,60%)`;
+ p.style.animationDuration=5+Math.random()*5+"s";
+ document.body.appendChild(p);
+}
+</script>
+
+<div id="start" class="screen active">
+<h1>Game Asmaul Husna</h1>
+
+<div class="profile">
+ <img src="endang-removebg-preview.png">
+ <div>
+  <b>ENDANG SUMIATI</b><br>
+  Guru SMKN 2 Pacitan<br>
+  Tahun 2025
+ </div>
+</div>
+
+<input id="nama" placeholder="Nama Pemain"><br><br>
+<button onclick="mulai()">MAIN</button>
+</div>
+
+<div id="play" class="screen">
+<h2 id="sapaan"></h2>
+⏱️ <span id="timer">240</span> | ⭐ <span id="score">0</span>
+<div id="notif"></div>
+<div id="game"></div>
+</div>
+
+<div id="result" class="screen">
+<h2 id="hasil"></h2>
+<p id="pesan"></p>
+<button onclick="ulang()">Main Ulang</button>
+</div>
+
+<script>
+const ASMAUL=[
+["الرَّحْمٰنُ","Yang Maha Pengasih"],
+["الرَّحِيْمُ","Yang Maha Penyayang"],
+["الْمَلِكُ","Yang Maha Merajai"],
+["الْقُدُّوسُ","Yang Maha Suci"],
+["السَّلَامُ","Yang Maha Sejahtera"],
+["الْمُؤْمِنُ","Yang Maha Memberi Keamanan"],
+["الْعَزِيزُ","Yang Maha Perkasa"],
+["الْغَفَّارُ","Yang Maha Pengampun"],
+["الرَّزَّاقُ","Yang Maha Pemberi Rezeki"],
+["الْعَلِيمُ","Yang Maha Mengetahui"],
+["الْفَتَّاحُ","Yang Maha Pembuka"],
+["الْحَكِيمُ","Yang Maha Bijaksana"]
+];
+
+let cards=[],first=null,score=0,time=240,interval,nama="";
+let beepCtx=null;
+
+/* bunyi TIT AMAN */
+function tit(){
+ try{
+  if(!beepCtx){
+   beepCtx=new (window.AudioContext||window.webkitAudioContext)();
+  }
+  if(beepCtx.state==="suspended"){
+   beepCtx.resume();
+  }
+  const o=beepCtx.createOscillator();
+  const g=beepCtx.createGain();
+  o.type="square";o.frequency.value=880;
+  g.gain.value=0.015;
+  o.connect(g);g.connect(beepCtx.destination);
+  o.start();o.stop(beepCtx.currentTime+0.04);
+ }catch(e){}
+}
+
+function acak(a){return a.sort(()=>Math.random()-0.5)}
+
+function mulai(){
+ beepCtx=new (window.AudioContext||window.webkitAudioContext)();
+ beepCtx.resume();
+
+ nama=document.getElementById("nama").value||"Pemain";
+ document.getElementById("start").classList.remove("active");
+ document.getElementById("play").classList.add("active");
+ document.getElementById("sapaan").innerText="Selamat bermain, "+nama;
+
+ setup();
+ interval=setInterval(()=>{
+  time--;
+  document.getElementById("timer").innerText=time;
+  tit();
+  if(time<=0) selesai();
+ },1000);
+}
+
+function setup(){
+ score=0;time=240;cards=[];first=null;
+ document.getElementById("score").innerText=0;
+
+ acak([...ASMAUL]).slice(0,10).forEach((p,i)=>{
+  cards.push({t:p[0],id:i});
+  cards.push({t:p[1],id:i});
+ });
+ acak(cards);
+
+ const g=document.getElementById("game");
+ g.innerHTML="";
+ cards.forEach(c=>{
+  let d=document.createElement("div");
+  d.className="card";d.innerText=c.t;
+  d.onclick=()=>klik(d,c);
+  g.appendChild(d);
+ });
+}
+
+function klik(el,c){
+ if(el.classList.contains("matched")||el===first?.el)return;
+ el.classList.add("selected");
+ const notif=document.getElementById("notif");
+
+ if(!first){first={el,c}}
+ else{
+  if(first.c.id===c.id&&first.c.t!==c.t){
+   el.classList.remove("selected");
+   first.el.classList.remove("selected");
+   el.classList.add("matched");
+   first.el.classList.add("matched");
+   score+=10;
+   document.getElementById("score").innerText=score;
+   notif.innerText="✅ BENAR!";
+   if(document.querySelectorAll(".matched").length===cards.length){
+    setTimeout(selesai,800);
+   }
+  }else{
+   notif.innerText="❌ SALAH!";
+   setTimeout(()=>{
+    el.classList.remove("selected");
+    first.el.classList.remove("selected");
+   },500);
+  }
+  setTimeout(()=>notif.innerText="",800);
+  first=null;
+ }
+}
+
+function selesai(){
+ clearInterval(interval);
+ document.getElementById("play").classList.remove("active");
+ document.getElementById("result").classList.add("active");
+ document.getElementById("hasil").innerText=`${nama}, skor Anda: ${score}`;
+ document.getElementById("pesan").innerText=
+  score===100 ? "🎉 SELAMAT! SKOR SEMPURNA!" : "✨ Bagus! Ayo coba lagi ✨";
+}
+
+function ulang(){
+ document.getElementById("result").classList.remove("active");
+ document.getElementById("play").classList.add("active");
+ mulai();
+}
+</script>
+
+</body>
+</html>
